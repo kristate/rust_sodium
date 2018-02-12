@@ -9,7 +9,7 @@ use libc::c_ulonglong;
 use rustc_serialize;
 use std::iter::repeat;
 
-use super::super::box_::curve25519xsalsa20poly1305;
+use super::super::box_::curve25519xsalsa20poly1305 as box_;
 
 /// Number of bytes in a `Seed`.
 pub const SEEDBYTES: usize = ffi::crypto_sign_ed25519_SEEDBYTES;
@@ -141,15 +141,15 @@ pub fn sign_detached(m: &[u8], &SecretKey(ref sk): &SecretKey) -> Signature {
 /// `pk_to_curve25519()` converts a public key `pk` from ed25519 to curve25519.
 /// `pk_to_curve25519()` returns the curve25519 public key `Ok(pk)`.
 /// If the public key fails conversion, `pk_to_curve25519()` returns `Err(())`.
-pub fn pk_to_curve25519(&PublicKey(ref pk): &PublicKey) -> Result<curve25519xsalsa20poly1305::PublicKey, ()> {
+pub fn pk_to_curve25519(&PublicKey(ref pk): &PublicKey) -> Result<box_::PublicKey, ()> {
     unsafe {
-        let mut curve25519_pk = [0u8; curve25519xsalsa20poly1305::PUBLICKEYBYTES];
+        let mut curve25519_pk = [0u8; box_::PUBLICKEYBYTES];
         if ffi::crypto_sign_ed25519_pk_to_curve25519(
           curve25519_pk.as_mut_ptr(),
           pk.as_ptr()
         ) == 0
         {
-          Ok(curve25519xsalsa20poly1305::PublicKey(curve25519_pk))
+          Ok(box_::PublicKey(curve25519_pk))
         } else {
           Err(())
         }
@@ -159,15 +159,15 @@ pub fn pk_to_curve25519(&PublicKey(ref pk): &PublicKey) -> Result<curve25519xsal
 /// `sk_to_curve25519()` converts a secret key `sk` from ed25519 to curve25519.
 /// `sk_to_curve25519()` returns the curve25519 secret key `Ok(sk)`.
 /// If the secret key fails conversion, `sk_to_curve25519()` returns `Err(())`.
-pub fn sk_to_curve25519(&SecretKey(ref sk): &SecretKey) -> Result<curve25519xsalsa20poly1305::SecretKey, ()> {
+pub fn sk_to_curve25519(&SecretKey(ref sk): &SecretKey) -> Result<box_::SecretKey, ()> {
     unsafe {
-        let mut curve25519_sk = [0u8; curve25519xsalsa20poly1305::SECRETKEYBYTES];
+        let mut curve25519_sk = [0u8; box_::SECRETKEYBYTES];
         if ffi::crypto_sign_ed25519_sk_to_curve25519(
           curve25519_sk.as_mut_ptr(),
           sk.as_ptr()
         ) == 0
         {
-          Ok(curve25519xsalsa20poly1305::SecretKey(curve25519_sk))
+          Ok(box_::SecretKey(curve25519_sk))
         } else {
           Err(())
         }
@@ -298,8 +298,8 @@ mod test {
         assert!(::init());
         for _i in 0..256usize {
             let (pk, sk) = gen_keypair();
-            let curve25519xsalsa20poly1305::PublicKey(curve25519_pk) = pk_to_curve25519(&pk).expect("Public Key");
-            let curve25519xsalsa20poly1305::SecretKey(curve25519_sk) = sk_to_curve25519(&sk).expect("Secret Key");
+            let box_::PublicKey(curve25519_pk) = pk_to_curve25519(&pk).expect("Public Key");
+            let box_::SecretKey(curve25519_sk) = sk_to_curve25519(&sk).expect("Secret Key");
             let scalarmult_curve25519::GroupElement(curve25519_pk2) = scalarmult_curve25519::scalarmult_base(&scalarmult_curve25519::Scalar(curve25519_sk));
             assert!(curve25519_pk == curve25519_pk2);
         }
