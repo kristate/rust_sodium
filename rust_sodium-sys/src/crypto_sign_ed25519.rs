@@ -32,6 +32,12 @@ extern "C" {
                                                mlen: c_ulonglong,
                                                pk: *const u8)
                                                -> c_int;
+    pub fn crypto_sign_ed25519_pk_to_curve25519( curve25519_pk: *mut u8
+                                               , ed25519_pk: *const u8)
+                                               -> c_int;
+    pub fn crypto_sign_ed25519_sk_to_curve25519( curve25519_sk: *mut u8
+                                               , ed25519_sk: *const u8)
+                                               -> c_int;
     pub fn crypto_sign_ed25519_bytes() -> size_t;
     pub fn crypto_sign_ed25519_seedbytes() -> size_t;
     pub fn crypto_sign_ed25519_publickeybytes() -> size_t;

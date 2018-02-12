@@ -9,6 +9,8 @@ use libc::c_ulonglong;
 use rustc_serialize;
 use std::iter::repeat;
 
+use super::super::box_::curve25519xsalsa20poly1305;
+
 /// Number of bytes in a `Seed`.
 pub const SEEDBYTES: usize = ffi::crypto_sign_ed25519_SEEDBYTES;
 
@@ -136,6 +138,42 @@ pub fn sign_detached(m: &[u8], &SecretKey(ref sk): &SecretKey) -> Signature {
     }
 }
 
+/// `pk_to_curve25519()` converts a public key `pk` from ed25519 to curve25519.
+/// `pk_to_curve25519()` returns the curve25519 public key `Ok(pk)`.
+/// If the public key fails conversion, `pk_to_curve25519()` returns `Err(())`.
+pub fn pk_to_curve25519(&PublicKey(ref pk): &PublicKey) -> Result<curve25519xsalsa20poly1305::PublicKey, ()> {
+    unsafe {
+        let mut curve25519_pk = [0u8; curve25519xsalsa20poly1305::PUBLICKEYBYTES];
+        if ffi::crypto_sign_ed25519_pk_to_curve25519(
+          curve25519_pk.as_mut_ptr(),
+          pk.as_ptr()
+        ) == 0
+        {
+          Ok(curve25519xsalsa20poly1305::PublicKey(curve25519_pk))
+        } else {
+          Err(())
+        }
+    }
+}
+
+/// `sk_to_curve25519()` converts a secret key `sk` from ed25519 to curve25519.
+/// `sk_to_curve25519()` returns the curve25519 secret key `Ok(sk)`.
+/// If the secret key fails conversion, `sk_to_curve25519()` returns `Err(())`.
+pub fn sk_to_curve25519(&SecretKey(ref sk): &SecretKey) -> Result<curve25519xsalsa20poly1305::SecretKey, ()> {
+    unsafe {
+        let mut curve25519_sk = [0u8; curve25519xsalsa20poly1305::SECRETKEYBYTES];
+        if ffi::crypto_sign_ed25519_sk_to_curve25519(
+          curve25519_sk.as_mut_ptr(),
+          sk.as_ptr()
+        ) == 0
+        {
+          Ok(curve25519xsalsa20poly1305::SecretKey(curve25519_sk))
+        } else {
+          Err(())
+        }
+    }
+}
+
 /// `verify_detached()` verifies the signature in `sig` against the message `m`
 /// and the signer's public key `pk`.
 /// `verify_detached()` returns true if the signature is valid, false otherwise.
@@ -158,6 +196,7 @@ pub fn verify_detached(
 #[cfg(test)]
 mod test {
     use super::*;
+    use super::super::super::scalarmult::curve25519 as scalarmult_curve25519;
 
     #[test]
     fn test_sign_verify() {
@@ -251,6 +290,18 @@ mod test {
                 assert!(Err(()) == verify(&sm, &pk));
                 sm[j] ^= 0x20;
             }
+        }
+    }
+
+    #[test]
+    fn test_ed25519_to_curve25519() {
+        assert!(::init());
+        for _i in 0..256usize {
+            let (pk, sk) = gen_keypair();
+            let curve25519xsalsa20poly1305::PublicKey(curve25519_pk) = pk_to_curve25519(&pk).expect("Public Key");
+            let curve25519xsalsa20poly1305::SecretKey(curve25519_sk) = sk_to_curve25519(&sk).expect("Secret Key");
+            let scalarmult_curve25519::GroupElement(curve25519_pk2) = scalarmult_curve25519::scalarmult_base(&scalarmult_curve25519::Scalar(curve25519_sk));
+            assert!(curve25519_pk == curve25519_pk2);
         }
     }
 
